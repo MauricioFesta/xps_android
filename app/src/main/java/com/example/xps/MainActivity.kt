@@ -22,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import java.io.IOException
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.reflect.typeOf
 
 
 class MainActivity : AppCompatActivity() {
@@ -33,8 +34,10 @@ class MainActivity : AppCompatActivity() {
     private var MYUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
     lateinit var mBluetoothAdapter: BluetoothAdapter
     var list: ArrayList<String> = ArrayList()
+    var list_device: ArrayList<BluetoothDevice> = ArrayList()
     lateinit var arrayAdapter: ArrayAdapter<String>
     var mmSocket: BluetoothSocket? = null
+    private var mMac: String = "D8:F3:BC:53:1F:B0"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,45 +51,27 @@ class MainActivity : AppCompatActivity() {
         arrayAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, list)
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        search_device()
-        add_item("Constructor")
-
-        // Example of a call to a native method
-        //binding.sampleText.text = stringFromJNI()
-    }
-
-    fun listBl(view: View){
-
-            //Toast.makeText(applicationContext,"this is toast message",Toast.LENGTH_SHORT).show()
-
-
-
-        /*
-        var requestBluetooth = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val toast = Toast.makeText(applicationContext, "Liberado", Toast.LENGTH_SHORT)
-                toast.show()
-            }else{
-                val toast = Toast.makeText(applicationContext, "Não Liberado", Toast.LENGTH_SHORT)
-                toast.show()
-            }
-        }
-
-        if (mBluetoothAdapter?.isEnabled == false) {
-            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            requestBluetooth.launch(enableBtIntent)
-        }
-
-        */
-
         val pairedDevices: Set<BluetoothDevice> = mBluetoothAdapter.bondedDevices
 
         listView.setOnItemClickListener { parent, view, position, id ->
 
-            add_item("teste2222")
-
+            connectBluetooth(list_device[position])
 
         }
+
+        if(verifyConnected(pairedDevices)){
+            search_device()
+        }else{
+
+            addPaired(pairedDevices)
+        }
+
+
+    }
+
+    fun openPortao(view: View){
+
+        val pairedDevices: Set<BluetoothDevice> = mBluetoothAdapter.bondedDevices
 
         if(pairedDevices.isEmpty()){
 
@@ -102,20 +87,49 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+        }else{
+
+            if(verifyIsArd()){
+
+                connectBluetooth(list_device[0])
+                sendChar()
+
+            }else{
+
+                sendChar()
+            }
+
         }
 
-        //if(pairedDevices.isNotEmpty()){
+    }
 
-           // pairedDevices.forEach { device ->
-               // val deviceName = device.name
-                //list.add(deviceName)
-                //val deviceHardwareAddress = device.address // MAC address
+    fun addPaired(pairedDevices: Set<BluetoothDevice>){
 
-            //}
+        pairedDevices.forEach { device ->
 
-       // }
+            val deviceStr: String =  """
+                        ${device!!.name}
+                        ${device!!.address}
+                        """.trimIndent()
 
+            add_item("CONECTADO -> " + deviceStr)
+            add_device(device)
 
+        }
+
+    }
+
+    fun verifyConnected(pairedDevices: Set<BluetoothDevice>): Boolean{
+
+        return pairedDevices.isEmpty()
+
+    }
+
+    fun verifyIsArd(): Boolean {
+
+        var dispConectado: String? = list.find { it.contains("CONECTADO -> ") }
+
+        return dispConectado !is String
 
     }
 
@@ -127,9 +141,11 @@ class MainActivity : AppCompatActivity() {
     }
     fun add_item(vl: String){
 
-        list.add(vl)
-        arrayAdapter.notifyDataSetChanged()
-        listView.adapter = arrayAdapter
+        if(!list.contains(vl)) {
+            list.add(vl)
+            arrayAdapter.notifyDataSetChanged()
+            listView.adapter = arrayAdapter
+        }
 
     }
 
@@ -142,31 +158,23 @@ class MainActivity : AppCompatActivity() {
         val receiver: BroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
 
-                arrayAdapter.notifyDataSetChanged()
-                listView.adapter = arrayAdapter
-
                 val action = intent.action
                 if (BluetoothDevice.ACTION_FOUND == action) {
-                    val device = intent
-                        .getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
 
-                    add_item(
-                        """
+                    if(device!!.address == mMac){
+
+                        add_item(
+                            """
                         ${device!!.name}
                         ${device!!.address}
                         """.trimIndent()
-                    )
+                        )
 
-                    if(device!!.name == ""){
-                        //conect here bluethooth vamonanar
+                        add_device(device)
 
-                        connectBl(device)
+                        connectBluetooth(list_device[0])
                     }
-
-                    arrayAdapter.notifyDataSetChanged()
-                    listView.adapter = arrayAdapter
-
-
                 }
             }
         }
@@ -181,16 +189,43 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    fun connectBl(device: BluetoothDevice){
+    fun add_device(device: BluetoothDevice){
+        if(!list_device.contains(device)){
+            list_device.add(device)
+        }
+
+    }
+
+    fun connectBluetooth(device: BluetoothDevice){
 
         try {
 
-            mmSocket =  device.createRfcommSocketToServiceRecord(MYUUID)
-            mmSocket!!.connect()
+            if(verifyIsArd()){
 
+                mmSocket =  device.createRfcommSocketToServiceRecord(MYUUID)
+                mmSocket!!.connect()
+
+                val deviceStr: String =  """
+                        ${device.name}
+                        ${device.address}
+                        """.trimIndent()
+
+                list.remove(deviceStr)
+
+                add_item("CONECTADO -> " + deviceStr)
+
+            }else{
+                toast("Ja conectado")
+            }
 
         }catch (e: IOException){
-            toast("Erro ao conectar no dispositivo")
+
+            toast("Erro ao conectar no dispositivo: " + e)
+            /*
+            var dispConectado: String? = list.find { it.contains(device.address) }
+            list.remove("CONECTADO -> " + dispConectado)
+
+             */
         }
 
 
@@ -207,7 +242,7 @@ class MainActivity : AppCompatActivity() {
 
         }catch(e: IOException){
 
-            toast("Erro enviar dado")
+            toast("Erro ao enviar dado")
 
         }
 
