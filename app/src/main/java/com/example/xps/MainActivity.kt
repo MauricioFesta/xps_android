@@ -12,6 +12,7 @@ import android.content.BroadcastReceiver
 import android.bluetooth.BluetoothClass
 import android.content.Context
 import android.content.Intent
+import android.app.Activity
 
 
 import android.widget.Toast
@@ -37,7 +38,8 @@ class MainActivity : AppCompatActivity() {
     var list_device: ArrayList<BluetoothDevice> = ArrayList()
     lateinit var arrayAdapter: ArrayAdapter<String>
     var mmSocket: BluetoothSocket? = null
-    private var mMac: String = "D8:F3:BC:53:1F:B0"
+    private var mMac: String = "98:D3:21:F7:97:77"
+    private val REQUEST_ENABLE_BLUETOOTH = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,13 +53,36 @@ class MainActivity : AppCompatActivity() {
         arrayAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, list)
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        val pairedDevices: Set<BluetoothDevice> = mBluetoothAdapter.bondedDevices
+        if (!mBluetoothAdapter?.isEnabled) {
+            val enableBluetoothIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            startActivityForResult(enableBluetoothIntent, REQUEST_ENABLE_BLUETOOTH)
+        }else{
 
-        listView.setOnItemClickListener { parent, view, position, id ->
-
-            connectBluetooth(list_device[position])
+            initial()
 
         }
+
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_ENABLE_BLUETOOTH) {
+            if (resultCode == Activity.RESULT_OK) {
+                if (mBluetoothAdapter!!.isEnabled) {
+                    toast("Bluetooth habilitado")
+                    initial()
+                } else {
+                    toast("Bluetooth desabilitado")
+                }
+            } else if (resultCode == Activity.RESULT_CANCELED) {
+                toast("Habilitação bluetooth cancelada")
+            }
+        }
+    }
+
+    fun initial(){
+
+        val pairedDevices: Set<BluetoothDevice> = mBluetoothAdapter.bondedDevices
 
         if(verifyConnected(pairedDevices)){
             search_device()
@@ -66,6 +91,11 @@ class MainActivity : AppCompatActivity() {
             addPaired(pairedDevices)
         }
 
+        listView.setOnItemClickListener { parent, view, position, id ->
+
+            connectBluetooth(list_device[position])
+
+        }
 
     }
 
@@ -95,7 +125,7 @@ class MainActivity : AppCompatActivity() {
                 sendChar()
 
             }else{
-
+                connectBluetooth(list_device[0])
                 sendChar()
             }
 
@@ -114,6 +144,7 @@ class MainActivity : AppCompatActivity() {
 
             add_item("CONECTADO -> " + deviceStr)
             add_device(device)
+            connectBluetooth(list_device[0])
 
         }
 
@@ -200,6 +231,28 @@ class MainActivity : AppCompatActivity() {
 
         try {
 
+            if(mmSocket == null && validMacAddres(device.address)){
+
+                mmSocket =  device.createRfcommSocketToServiceRecord(MYUUID)
+                mmSocket!!.connect()
+
+                val deviceStr: String =  """
+                        ${device.name}
+                        ${device.address}
+                        """.trimIndent()
+
+                list.remove(deviceStr)
+
+                add_item("CONECTADO -> " + deviceStr)
+
+            }else{
+                toast("Conectado e OK")
+            }
+
+
+
+            /*
+
             if(verifyIsArd()){
 
                 mmSocket =  device.createRfcommSocketToServiceRecord(MYUUID)
@@ -217,6 +270,8 @@ class MainActivity : AppCompatActivity() {
             }else{
                 toast("Ja conectado")
             }
+
+             */
 
         }catch (e: IOException){
 
@@ -236,7 +291,10 @@ class MainActivity : AppCompatActivity() {
         try{
 
             if(mmSocket != null){
-                mmSocket!!.outputStream.write("a".toByteArray())
+                mmSocket!!.outputStream.write("aa".toByteArray())
+            }else{
+
+                toast("Não conectado")
             }
 
 
@@ -245,6 +303,12 @@ class MainActivity : AppCompatActivity() {
             toast("Erro ao enviar dado")
 
         }
+
+    }
+
+    fun validMacAddres(vl: String): Boolean{
+
+        return vl == mMac
 
     }
 
