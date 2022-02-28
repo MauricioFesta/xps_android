@@ -291,7 +291,7 @@ class MainActivity : AppCompatActivity() {
         try{
 
             if(mmSocket != null){
-                mmSocket!!.outputStream.write("aa".toByteArray())
+                mmSocket!!.outputStream.write("dbbygqwfjcbozcwdqukrykxlcldgpqksrlqzeohnrkdqpbufvgyurwhtjkbyalruyhvcwcrppxheyblwkksbizwrjxpmkgiiqdnoigdxdmbeooayysbgrzxcwnoivwqncfdkmijpvmtlavlznmfgnfjjuzrpyjfapimbtvsojozjjkkzyqhlvqwpspgqanspyesrznfibgtmqenqwvdrnzifqqxqepictatunaeqgyfyesoaprtdsdkitiyxxgbt".toByteArray())
             }else{
 
                 toast("Não conectado")
